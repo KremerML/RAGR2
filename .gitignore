@@ -1,0 +1,5 @@
+__pycache__/
+.vscode/
+archive/
+vecdb_versions/
+structure.py
