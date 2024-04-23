@@ -37,44 +37,6 @@ You said: {claim}
 To verify it,
 """.strip()
 
-RAG_QGEN_PROMPT = """I will check the things you said by generating queries to retrieve relevant documents from a vector store.
-
-You said: Your nose switches back and forth between nostrils. When you sleep, you switch about every 45 minutes. This is to prevent a buildup of mucus. It's called the nasal cycle.
-To verify it:
-1. I asked: Nose switches between nostrils
-2. I asked: Nostrils switch every 45 minutes during sleep 
-3. I asked: Reason for nasal switching is to prevent mucus buildup
-4. I asked: Definition of nasal cycle
-
-You said: The Stanford Prison Experiment was conducted in the basement of Encina Hall, Stanford's psychology building.  
-To verify it:
-1. I asked: Location where Stanford Prison Experiment was conducted
-
-You said: The Havel-Hakimi algorithm is an algorithm for converting the adjacency matrix of a graph into its adjacency list. It is named after Vaclav Havel and Samih Hakimi.
-To verify it:
-1. I asked: What is the Havel-Hakimi algorithm?
-2. I asked: Who were Havel-Hakimi algorithm named after?
-
-You said: "Time of My Life" is a song by American singer-songwriter Bill Medley from the soundtrack of the 1987 film Dirty Dancing. The song was produced by Michael Lloyd.
-To verify it:  
-1. I asked: Singer of "Time of My Life" song
-2. I asked: Film "Time of My Life" song is from
-3. I asked: Producer of "Time of My Life" song  
-
-You said: Kelvin Hopins was suspended from the Labor Party due to his membership in the Conservative Party.
-To verify it:
-1. I asked: Reason for Kelvin Hopins suspension from Labor Party
-
-You said: Social work is a profession that is based in the philosophical tradition of humanism. It is an intellectual discipline that has its roots in the 1800s. 
-To verify it:
-1. I asked: Philosophical tradition social work is based on
-2. I asked: Time period social work has its roots in
-
-You said: {claim}
-
-To verify it:
-
-""".strip()
 
 CONTEXTUAL_QGEN_PROMPT = """I will check things you said and ask questions.
 
@@ -187,31 +149,7 @@ AGREEMENT_GATE_PROMPT = """I will check some things you said.
 4. Reasoning:
 """.strip()
 
-RAG_AGREEMENT_GATE_PROMPT = """I will check some things you said.
 
-1. You said: The Stanford Prison Experiment was conducted in the basement of Jordan Hall, Stanford's psychology building.
-2. To verify, the query was: Location of Stanford Prison Experiment.
-3. I found this evidence: Carried out August 15-21, 1971 in the basement of Jordan Hall, the Stanford Prison Experiment set out to examine the psychological effects of authority and powerlessness in a prison environment.
-4. Reasoning: The evidence states that the Stanford Prison Experiment was conducted in the basement of Jordan Hall, which agrees with the claim.
-5. Therefore: This agrees with the claim.
-
-1. You said: Social work is a profession that is based in the philosophical tradition of humanism. It is an intellectual discipline that has its roots in the 1800s.  
-2. To verify, the query was: When did social work have its roots?
-3. I found this evidence: Social work's roots were planted in the 1880s, when charity organization societies (COS) were created to organize municipal voluntary relief associations and settlement houses were established.
-4. Reasoning: The evidence indicates that social work has its roots in the 1880s, while the claim states it has roots in the 1800s, so there is a disagreement on the specific time period.
-5. Therefore: This disagrees with the claim.
-
-1. You said: "Time of My Life" is a song by American singer-songwriter Bill Medley from the soundtrack of the 1987 film Dirty Dancing. The song was produced by Michael Lloyd.
-2. To verify, the query was: Original producer of "Time of My Life".
-3. I found this evidence: On September 8, 2010, the original demo of this song, along with a remix by producer Michael Lloyd , was released as digital files in an effort to raise money for the Patrick Swayze Pancreas Cancer Research Foundation at Stanford University.
-4. Reasoning: The evidence mentions that Michael Lloyd produced a remix of the song "Time of My Life", but does not directly confirm or deny that he was the original producer of the song from the Dirty Dancing soundtrack as stated in the claim.
-5. Therefore: This is irrelevant to the claim.
-
-1. You said: {claim}
-2. To verify, the query was: {query} 
-3. I found this evidence: {evidence}
-4. Reasoning:
-""".strip()
 
 CONTEXTUAL_AGREEMENT_GATE_PROMPT = """I will check some things you said.
 
@@ -291,6 +229,7 @@ CONTEXTUAL_AGREEMENT_GATE_PROMPT = """I will check some things you said.
 4. I found this article: {evidence}
 5. Reasoning:
 """.strip()
+
 
 EDITOR_PROMPT = """I will fix some things you said.
 
