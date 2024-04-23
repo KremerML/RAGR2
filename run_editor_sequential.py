@@ -13,7 +13,7 @@ import Levenshtein
 import tqdm
 import time
 
-from prompts import hallucination_prompts, rarr_prompts
+from prompts import hallucination_prompts, rarr_prompts, ragr_prompts
 from utils import (
     agreement_gate,
     editor,
@@ -93,7 +93,7 @@ def run_editor_one_instance(
         model=model,
         prompt=rarr_prompts.CONTEXTUAL_QGEN_PROMPT
         if context
-        else rarr_prompts.RAG_QGEN_PROMPT,
+        else ragr_prompts.RAG_QGEN_PROMPT,
         temperature=temperature_qgen,
         num_rounds=num_rounds_qgen,
     )
@@ -152,7 +152,7 @@ def run_editor_one_instance(
             model=model,
             prompt=rarr_prompts.CONTEXTUAL_AGREEMENT_GATE_PROMPT
             if context
-            else rarr_prompts.AGREEMENT_GATE_PROMPT,
+            else ragr_prompts.RAG_AGREEMENT_GATE_PROMPT,
         )
         time_agreement_gate = time.time() - time_evidence_retrieval - time_question_generation - start_time
         agreement_gates.append(gate)
@@ -167,7 +167,7 @@ def run_editor_one_instance(
                 model=model,
                 prompt=rarr_prompts.CONTEXTUAL_EDITOR_PROMPT
                 if context
-                else rarr_prompts.EDITOR_PROMPT,
+                else ragr_prompts.RAG_EDITOR_PROMPT,
             )["text"]
 
             # Don't keep the edit if the editor makes a huge change
@@ -233,7 +233,7 @@ def get_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model",
-        default="text-davinci-003",
+        default="gpt-3.5-turbo-0125",
         type=str,
         help="OpenAI GPT-3 model to use.",
     )
