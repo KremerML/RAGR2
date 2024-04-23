@@ -9,59 +9,98 @@ from langchain_community.document_loaders import DataFrameLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
+from chromadb.config import Settings
+from langchain_community.vectorstores import FAISS
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
-DATASET_PATH = '/Users/kremerr/Documents/GitHub/RARR/archive/narrative_qa/summaries.csv'
-PERSIST_PATH = '/Users/kremerr/Documents/GitHub/RARR/vecdb_versions/narrative_qa_vecdb'
+DATASET_PATH = 'archive/narrative_qa/summaries.csv'
+PERSIST_PATH = 'vecdb_versions/narrative_qa_faiss_vecdb'
 
 
-def create_vecdb() -> Optional[Chroma]:
+def create_vecdb() -> Optional[FAISS]:
     """
-    Initialize a Chroma vector store with documents from the dataset.
+    Initialize a FAISS vector store with documents from the dataset.
     If the vector store already exists, it will be loaded instead of creating a new one.
-
     Returns:
-        Chroma: An initialized Chroma vector store instance, or None if the dataset is empty.
+        FAISS: An initialized FAISS vector store instance, or None if the dataset is empty.
     """
     # Initialize embeddings and text splitter
     embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=100)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=40)
 
     # Check if the vector store already exists
     if os.path.exists(PERSIST_PATH):
-        print('Chromadb already exists, loading...')
-        vecdb = Chroma(persist_directory=PERSIST_PATH, 
-                       embedding_function=embeddings,
-                       collection_name='narrative_qa_collection')
+        print('FAISS vector store already exists, loading...')
+        vecdb = FAISS.load_local(PERSIST_PATH, embeddings)
     else:
-        print('Chromadb not found, creating new...')
-        vecdb = Chroma(
-            persist_directory=PERSIST_PATH,
-            embedding_function=embeddings,
-            collection_name='narrative_qa_collection'
-        )
-
-        # Load summaries.csv
+        print('FAISS vector store not found, creating new...')
         df = pd.read_csv(DATASET_PATH)
         if df.empty:
             print("Dataset is empty. Cannot create vector store.")
             return None
-
-        df.pop('summary_tokenized', None)  # Drop the 'summary_tokenized' column if it exists
+        df.pop('summary_tokenized')  # Drop the 'summary_tokenized' column if it exists
         loader = DataFrameLoader(data_frame=df, page_content_column='summary')
         docs = loader.load()
-
-        # Split documents
         splits = text_splitter.split_documents(docs)
         print("Documents loaded and split...")
-
-        # Add documents to the vector store
         print("Adding texts to vector store...")
-        vecdb.add_documents(splits)
+        vecdb = FAISS.from_documents(
+            splits,
+            embeddings
+        )
         print("Documents added.")
-        vecdb.persist()
-
+        vecdb.save_local(PERSIST_PATH)
     return vecdb
+
+# def create_vecdb() -> Optional[Chroma]:
+#     """
+#     Initialize a Chroma vector store with documents from the dataset.
+#     If the vector store already exists, it will be loaded instead of creating a new one.
+
+#     Returns:
+#         Chroma: An initialized Chroma vector store instance, or None if the dataset is empty.
+#     """
+#     # Initialize embeddings and text splitter
+#     embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
+#     text_splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=40)
+
+#     # Check if the vector store already exists
+#     if os.path.exists(PERSIST_PATH):
+#         print('Chromadb already exists, loading...')
+#         vecdb = Chroma(persist_directory=PERSIST_PATH, 
+#                        embedding_function=embeddings,
+#                        collection_name='narrative_qa_collection',
+#                        client_settings = Settings(allow_reset=True))
+#     else:
+#         print('Chromadb not found, creating new...')
+#         vecdb = Chroma(
+#             persist_directory=PERSIST_PATH,
+#             embedding_function=embeddings,
+#             collection_name='narrative_qa_collection',
+#             client_settings = Settings(allow_reset=True)
+#         )
+
+#         # Load summaries.csv
+#         df = pd.read_csv(DATASET_PATH)
+#         if df.empty:
+#             print("Dataset is empty. Cannot create vector store.")
+#             return None
+
+#         df.pop('summary_tokenized')  # Drop the 'summary_tokenized' column if it exists
+#         loader = DataFrameLoader(data_frame=df, page_content_column='summary')
+#         docs = loader.load()
+
+#         # Split documents
+#         splits = text_splitter.split_documents(docs)
+#         print("Documents loaded and split...")
+
+#         # Add documents to the vector store
+#         print("Adding texts to vector store...")
+#         vecdb.add_documents(splits)
+#         print("Documents added.")
+#         vecdb.persist()
+
+#     return vecdb
 
 
 def retrieve_evidence(
@@ -90,18 +129,3 @@ def retrieve_evidence(
         for evidence in evidences
     ]
     return evidences
-
-
-def generate_queries():
-    queries = []
-    # Complete implementation
-    return queries
-
-
-def main():
-    create_vecdb()
-
-
-
-if __name__ == "__main__":
-    main()
