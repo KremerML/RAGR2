@@ -1,17 +1,18 @@
-RAG_QGEN_PROMPT = """I will check the things you said by generating queries to retrieve relevant documents from a vector store.
+RAG_QGEN_PROMPT = """You are an expert in generating search queries to retrieve the most relevant and comprehensive evidence for a given claim. Given a passage that contains one or multiple sentences, your task is to generate a set of specific and precise queries. These queries should cover all the statements made in the passage, ensuring that each statement is addressed to retrieve the best possible evidence from a vector store. Do not generate more than 3 queries per claim.
 
-You said: John's mother grabs a banana before announcing.
+You said: Ron and John are brothers who run a coffeeshop together.
 To verify it:
-1. I asked: What does John's mother grab before announcing?
+1. I asked: How does Ron interact with John?
+2. I asked: What do Ron and John run together?
 
-You said: Annie's secret identity is a male stranger.
+You said: Annie's secret identity is an assassin.
 To verify it:
 1. I asked: What is Annie's secret identity?
 
 You said: Alyssa is initially not interested in Holden due to his lack of interest in music.
 To verify it:
 1. I asked: Why is Alyssa initially not interested in Holden?
-2. I asked: Who is Alyssa not interested in?
+2. I asked: How are Alysa and Holden related?
 
 You said: {claim}
 To verify it:
@@ -19,61 +20,53 @@ To verify it:
 """.strip()
 
 
-RAG_AGREEMENT_GATE_PROMPT = """I will check some things you said.
+RAG_AGREEMENT_GATE_PROMPT = """
+You are an expert at comparing claims to evidence. Your task is to check some things I said (claims). You will check whether the evidence and the claim imply the same answer to the query. You will provide your reasoning and the final decision. The final decision MUST contain one of the following words: "disagrees", "agrees", "irrelevant". KEEP YOUR REASONING VERY BRIEF.
 
-1. You said: John's mother grabs a banana before announcing.
-2. To verify, the query was: What does John's mother grab before announcing?
-3. I found this evidence: John's confidence collapses, and he announces that the movie is over. At that moment, his mother intervenes, grabbing the apple, moving to Tito's mark and announcing that she is ""ready"". The crew scrambles to shoot the scene, and her manic performance injects fresh energy and conviction into it.
-4. Reasoning: The evidence indicates that John's mother grabs an apple, while the claim states she grabs a banana, so there is a disagreement about the object.
-5. Therefore: This disagrees with the claim.
+Follow the expected output format:
+Reason: <reasoning>
+Therefore: This <decision> with the claim.
 
-1. You said: Annie's secret identity is a male stranger.  
-2. To verify, the query was: What is Annie's secret identity?
-3. I found this evidence: The night before the sting, Hooker sleeps with Annie, a waitress from a local restaurant. As Hooker leaves the building the next morning, he sees Annie walking toward him. The black-gloved man appears behind Hooker and shoots her dead – she was Lonnegan's hired killer, Annie Salino, and the gunman was hired by Gondorff to protect Hooker.
-4. Reasoning: The evidence indicates that Annie's secret identity is as a hired killer, or an assassin, while the claim states Annie's secret identity is a male stranger.
-5. Therefore: This disagrees with the claim.
+Here is one example:
+#
+Input:
+1. Claim: Tom betrays Mark for stealing his stamp collection.
+2. To verify, the query was: Why did Tom betray Mark?
+3. The retrieved evidence: Tom is questioned by Honston and Fridrickson, and fears they suspect him. He turns on Mark, drugging him and stealing the diamonds. Mark and John give chase, following Tom into the woods, where Mark kills him with a tire iron. Mark then meets the diamond buyer Tom set up, but learns that the diamonds are fake.
+4. Reason: 
+Output: 
+Reason: The evidence indicates that Tom betrayed Mark because he was being questioned by Honston and Fridrickson.
+Therefore: This disagrees with the claim.
+#
 
-1. You said: Alyssa is initially not interested in Holden due to his lack of interest in music.
-2. To verify, the query was: Why is Alyssa initially not interested in Holden?
-3. I found this evidence: Moved by Silent Bob's story, Holden devises a plan to fix both his relationship with Alyssa and his estranged friendship with Banky. He invites them both over and tells Alyssa that he would like to get over her past and remain her boyfriend.
-4. Reasoning: The evidence indicates that Holden and Alyssa are in a relationship, but does not directly confirm or deny why Alyssa was initially not interested in Holden. 
-5. Therefore: This is irrelevant to the claim.
+1. Claim: {claim}
+2. To verify, the query was: {query}
+3. The retrieved evidence: {evidence}
+4. Reason: The evidence indicates 
 
-1. You said: Tom can't love Mary fully because of secrecy.
-2. To verify, the query was: Why does Tom say he can't love May fully?
-3. I found this evidence: Tom replies that since she has always kept her true self a secret, he has never truly grown to love her as much as he could and that his love is ""incomplete"". Noticing that this upsets Mary, Tom tries to console his companion.
-4. Reasoning: The evidence indicates that Tom has never truly loved Mary because she has always kept her true self a secret, which aligns with the claim.
-5. Therefore: This agrees with the claim.
-
-1. You said: {claim}
-2. To verify, the query was: {query} 
-3. I found this evidence: {evidence}
-4. Reasoning:
 """.strip()
 
 
-RAG_EDITOR_PROMPT = """My task is to revise some things you said.
 
-1. You said: John's mother grabs a banana before announcing.
-2. To verify, the query was: What does John's mother grab before announcing?
-3. I found this evidence: John's confidence collapses, and he announces that the movie is over. At that moment, his mother intervenes, grabbing the apple, moving to Tito's mark and announcing that she is ""ready"". The crew scrambles to shoot the scene, and her manic performance injects fresh energy and conviction into it.
-4. Reasoning: This suggests the banana in your claim is wrong.
-5. My fix: John's mother grabs an apple before announcing that she is 'ready'.
+RAG_EDITOR_PROMPT = """
+You are an expert fact checker. Your task is to revise a claim based on reasoning that is provided for you. You must preserve as much of the original claim as possible. KEEP YOUR REVISIONS VERY BRIEF. The shorter the answer, the better.
 
-1. You said: Annie's secret identity is a male stranger.  
-2. To verify, the query was: What is Annie's secret identity?
-3. I found this evidence: The night before the sting, Hooker sleeps with Annie, a waitress from a local restaurant. As Hooker leaves the building the next morning, he sees Annie walking toward him. The black-gloved man appears behind Hooker and shoots her dead – she was Lonnegan's hired killer, Annie Salino, and the gunman was hired by Gondorff to protect Hooker.
-4. Reasoning: This suggests that Annie's secret identity is an assassin.
-5. My fix: Annie's secret identity is a hired killer/assassin.
+Follow the expected output format:
+Revised: <revised claim>
 
-1. You said: Easy was spoiled by his wise grandparents.
-2. To verify, the query was: Who spoiled Easy?
-3. I found this evidence: Easy is the son of foolish parents, who spoiled him. His father, in particular, regards himself as a philosopher, with a firm belief in the ""rights of man, equality, and all that
-4. Reasoning: This suggests Easy was spoiled by his foolish parents.
-5. My fix: Easy was spoiled by his foolish parents.
+Here is one example:
+#
+Input: 
+1. Claim: Tom betrays Mark for stealing his stamp collection.
+2. Query: Why did Tom betray Mark?
+3. Reason: The evidence indicates that Tom betrayed Mark because he was being questioned by Honston and Fridrickson.
+4. Revised: 
+Output: 
+Revised: Tom betrays Mark because he was being questioned by Honston and Fridrickson.
+#
 
-1. You said: {claim}
-2. To verify, the query was: {query}
-3. I found this evidence: {evidence}
-4. Reasoning: 
+1. Claim: {claim}
+2. Query: {query}
+3. Reason: {reason} 
+4. Revised: 
 """.strip()
