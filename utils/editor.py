@@ -2,7 +2,7 @@
 import os
 import time
 from typing import Dict, Union
-
+import logging
 import openai
 from openai import OpenAI
 
@@ -20,21 +20,25 @@ def parse_api_response(api_response: str) -> str:
     Returns:
         edited_claim: The edited claim.
     """
-    api_response = api_response.strip().split("\n")
-    if len(api_response) < 2:
-        print("Editor error.")
+    try:
+        lines = api_response.strip().split("\n")
+        edited_claim = None
+        for line in lines:
+            if line.startswith("Revised:"):
+                edited_claim = line.split("Revised:")[1].strip()
+                break
+        return edited_claim
+    except Exception as e:
+        print(f"Parsing error: {str(e)}")
         return None
-    edited_claim = api_response[1].split("My fix:")[-1].strip()
-    return edited_claim
 
 
-def run_rarr_editor(
+def run_ragr_editor(
     claim: str,
     query: str,
-    evidence: str,
+    reason: str,
     model: str,
     prompt: str,
-    context: str = None,
     num_retries: int = 5,
 ) -> Dict[str, str]:
     """Runs a GPT-3 editor on the claim given a query and evidence to support the edit.
@@ -50,31 +54,30 @@ def run_rarr_editor(
         edited_claim: The edited claim.
     """
     client = OpenAI()
-    if context:
-        gpt3_input = prompt.format(
-            context=context, claim=claim, query=query, evidence=evidence
-        ).strip()
-    else:
-        gpt3_input = prompt.format(claim=claim, query=query, evidence=evidence).strip()
+    gpt_input = prompt.format(claim=claim, query=query, reason=reason).strip()
 
     for _ in range(num_retries):
         try:
             response = client.chat.completions.create(
                     model=model,
                     messages=[
-                        {"role": "user", "content": gpt3_input}
+                        {"role": "user", "content": gpt_input}
                     ],
                     temperature=0.0,
                     max_tokens=512,
                     stop=["\n\n"],
             )
+            logging.info("Edited claim: %s", response.choices[0].message.content.strip())
+            logging.info("Usage: %s", response.usage.total_tokens)
             break
+
         except openai.OpenAIError as exception:
             print(f"{exception}. Retrying...")
             time.sleep(2)
 
-    edited_claim = parse_api_response(response.choices[0].message.content)
-    # If there was an error in GPT-3 generation, return the claim.
+    edited_claim = parse_api_response(response.choices[0].message.content.strip())
+    logging.info(f"Parsed editor response: {edited_claim}")
+    # If there was an error in GPT-4 generation, return the original claim.
     if not edited_claim:
         edited_claim = claim
     output = {"text": edited_claim}

@@ -2,7 +2,7 @@
 import os
 import time
 from typing import Any, Dict, Tuple
-
+import logging
 import openai
 from openai import OpenAI
 
@@ -10,27 +10,25 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 def parse_api_response(api_response: str) -> Tuple[bool, str, str]:
-    """Extract the agreement gate state and the reasoning from the GPT-3 API response.
-
-    Our prompt returns questions as a string with the format of an ordered list.
-    This function parses this response in a list of questions.
+    """Extract the agreement gate state and the reasoning from the GPT-4 API response.
 
     Args:
-        api_response: Agreement gate response from GPT-3.
+        api_response: Agreement gate response from GPT-4.
     Returns:
         is_open: Whether the agreement gate is open.
         reason: The reasoning for why the agreement gate is open or closed.
         decision: The decision of the status of the gate in string form.
     """
-    api_response = api_response.strip().split("\n")
-    if len(api_response) < 2:
-        reason = "Failed to parse."
+    try:
+        lines = api_response.strip().split("\n")
+        reason = lines[0]
+        decision = lines[1].split("Therefore:")[-1].strip()
+        is_open = "disagrees" in decision
+    except Exception as e:
+        reason = f"Failed to parse. Error: {str(e)}"
         decision = None
         is_open = False
-    else:
-        reason = api_response[0]
-        decision = api_response[1].split("Therefore:")[-1].strip()
-        is_open = "disagrees" in api_response[1]
+
     return is_open, reason, decision
 
 
@@ -40,7 +38,6 @@ def run_agreement_gate(
     evidence: str,
     model: str,
     prompt: str,
-    context: str = None,
     num_retries: int = 5,
 ) -> Dict[str, Any]:
     """Checks if a provided evidence contradicts the claim given a query.
@@ -60,30 +57,33 @@ def run_agreement_gate(
         gate: A dictionary with the status of the gate and reasoning for decision.
     """
     client = OpenAI()
-    if context:
-        gpt3_input = prompt.format(
-            context=context, claim=claim, query=query, evidence=evidence
-        ).strip()
-    else:
-        gpt3_input = prompt.format(claim=claim, query=query, evidence=evidence).strip()
+    gpt_input = prompt.format(claim=claim, query=query, evidence=evidence).strip()
+
 
     for _ in range(num_retries):
         try:
             response = client.chat.completions.create(
-                    model=model,
-                    messages=[
-                        {"role": "user", "content": gpt3_input}
-                    ],
-                    temperature=0.0,
-                    max_tokens=256,
-                    stop=["\n\n"],
-                    logit_bias={"50256": -100},  # Don't allow <|endoftext|> to be generated
-                )
-            break
+                model=model,
+                messages=[
+                    {"role": "user", "content": gpt_input}
+                ],
+                temperature=0.0,
+                max_tokens=512,
+                stop=["\n\n"],
+            )
+            api_response = response.choices[0].message.content
+            logging.info("Agreement gate response: %s", api_response.strip())
+            logging.info("Usage: %s", response.usage.total_tokens)
+
+            is_open, reason, decision = parse_api_response(api_response)
+            gate = {"is_open": is_open, "reason": reason, "decision": decision}
+            logging.info(f"Parsed agreement gate output: {gate}")
+            return gate
         except openai.OpenAIError as exception:
             print(f"{exception}. Retrying...")
             time.sleep(2)
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}. Retrying...")
+            time.sleep(2)
 
-    is_open, reason, decision = parse_api_response(response.choices[0].message.content)
-    gate = {"is_open": is_open, "reason": reason, "decision": decision}
-    return gate
+    return {"is_open": False, "reason": "Max retries exceeded", "decision": None}
