@@ -50,7 +50,7 @@ def chunk_to_dict(chunk):
     ragr_evidences = chunk['ragr_evidence'].to_list()
     evidences = [ast.literal_eval(evid) for evid in ragr_evidences]
     ground_truths = chunk['answer1'].to_list()
-    ragr_answers = chunk['response'].to_list()
+    ragr_answers = chunk['ragr_answer'].to_list()
 
     data = { 
         "question": questions,
@@ -62,8 +62,8 @@ def chunk_to_dict(chunk):
     return dataset
 
 def main():
-    output_path = '/Users/kremerr/Documents/GitHub/RAGR2/archive/ragas_eval/RAG_long_ans_500_ans_metrics.csv'
-    input_path = '/Users/kremerr/Documents/GitHub/RAGR2/archive/benchmarks/long_ans_500_final_merged_benchmark.csv'
+    output_path = '/Users/kremerr/Documents/GitHub/RAGR2/archive/ragas_eval/ragr_long_ans_500_with_context_ans_metrics.csv'
+    input_path = '/Users/kremerr/Documents/GitHub/RAGR2/archive/benchmarks/long_ans_500_with_context_merged_benchmark.csv'
     
     gpt3_5 = ChatOpenAI(model_name="gpt-3.5-turbo-0125")
     gpt_wrapper = LangchainLLMWrapper(langchain_llm=gpt3_5)
