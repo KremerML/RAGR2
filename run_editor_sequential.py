@@ -22,6 +22,7 @@ from langchain_community.vectorstores import FAISS
 
 def run_editor_one_instance(
     claim: str,
+    context: str,
     model: str = "gpt-3.5-turbo-1106", # "text-davinci-003",
     temperature_qgen: float = 0.7,
     num_rounds_qgen: int = 2,
@@ -57,8 +58,11 @@ def run_editor_one_instance(
     # Generate questions for the claim
     questions = question_generation.ragr_question_generation(
         claim=claim,
+        context=context,
         model=model,
-        prompt=ragr_prompts.RAG_QGEN_PROMPT,
+        prompt=ragr_prompts.CONTEXTUAL_RAG_QGEN_PROMPT
+            if context
+            else ragr_prompts.RAG_QGEN_PROMPT,
         temperature=temperature_qgen,
         num_rounds=num_rounds_qgen,
     )
@@ -69,7 +73,7 @@ def run_editor_one_instance(
         retrieve_evidence(query=query, vecdb=vecdb, top_k=max_evidences_per_question)
         for query in questions
     ]
-    # TODO: Figure out how to deduplicate evidences
+    # Deduplicate evidences
     seen_evidences = set()
     deduplicated_evidences = []
     for evidence_list in evidences_for_questions:
@@ -82,12 +86,6 @@ def run_editor_one_instance(
 
     # time_evidence_retrieval = time.time() - time_question_generation - start_time
 
-    # Flatten and deduplicate the evidences per question into a single list.
-    # used_evidences = [
-    #     e
-    #     for e in deduplicated_evidences 
-    #     for e in cur_evids
-    # ]
     # logging.info(f"All evidence: {used_evidences}")
     logging.info(f"All evidence: {deduplicated_evidences}")
 
@@ -97,10 +95,13 @@ def run_editor_one_instance(
         # Run the agreement gate on the current (claim, context, query, evidence) tuple
         gate = agreement_gate.run_agreement_gate(
             claim=claim,
+            context=context,
             query=evid["query"],
             evidence=evid["text"],
             model=model,
-            prompt=ragr_prompts.RAG_AGREEMENT_GATE_PROMPT,
+            prompt=ragr_prompts.CONTEXTUAL_RAG_AGREEMENT_GATE_PROMPT
+                if context
+                else ragr_prompts.RAG_AGREEMENT_GATE_PROMPT,
         )
         # time_agreement_gate = time.time() - time_evidence_retrieval - time_question_generation - start_time
         agreement_gates.append(gate)
@@ -110,10 +111,11 @@ def run_editor_one_instance(
             edited_claim = editor.run_ragr_editor(
                 claim=claim,
                 query=evid["query"],
-                # evidence=evid["text"],
+                evidence=evid["text"],
                 reason=gate['reason'],
+                context=context,
                 model=model,
-                prompt=ragr_prompts.RAG_EDITOR_PROMPT,
+                prompt= ragr_prompts.RAG_EDITOR_PROMPT
             )["text"]
 
             # Don't keep the edit if the editor makes a huge change
@@ -169,6 +171,12 @@ def get_args() -> argparse.Namespace:
         default="model_outputs_explanation",
         type=str,
         help="Field of the JSONL file to run the claim editing on.",
+    )
+    parser.add_argument(
+        "--context_field",
+        default=None,
+        type=str,
+        help="Field of the JSONL file to grab the context.",
     )
     parser.add_argument(
         "--model",
@@ -251,6 +259,11 @@ def main() -> None:
         lines = list(jsonlines.open(args.input_file))
         for line in tqdm.tqdm(lines):
             claim = line["input_info"][args.claim_field]
+            if args.context_field:
+                context = line["input_info"][args.context_field]
+                context = " ".join(context.split("\n"))
+            else:
+                context = None
 
             # Search for finished result
             if finished_results and claim in finished_results:
@@ -259,6 +272,7 @@ def main() -> None:
                 line["result"] = run_editor_one_instance(
                     model=args.model,
                     claim=claim,
+                    context=context,
                     temperature_qgen=args.temperature_qgen,
                     num_rounds_qgen=args.num_rounds_qgen,
                     max_evidences_per_question=args.max_evidences_per_question,
