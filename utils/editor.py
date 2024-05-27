@@ -36,6 +36,8 @@ def parse_api_response(api_response: str) -> str:
 def run_ragr_editor(
     claim: str,
     query: str,
+    context: str,
+    evidence: str,
     reason: str,
     model: str,
     prompt: str,
@@ -54,7 +56,13 @@ def run_ragr_editor(
         edited_claim: The edited claim.
     """
     client = OpenAI()
-    gpt_input = prompt.format(claim=claim, query=query, reason=reason).strip()
+    gpt_input = prompt.format(
+        claim=claim, 
+        query=context
+        if context
+        else query, 
+        reason=reason,
+        evidence=evidence).strip()
 
     for _ in range(num_retries):
         try:

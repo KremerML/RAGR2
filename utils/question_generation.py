@@ -9,7 +9,10 @@ from openai import OpenAI
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
-def parse_api_response(api_response: str) -> List[str]:
+def parse_api_response(
+        api_response: str,
+        context: str,
+) -> List[str]:
     """Extract questions from the GPT-4 API response.
 
     Args:
@@ -20,9 +23,15 @@ def parse_api_response(api_response: str) -> List[str]:
     questions = []
     lines = api_response.split("\n")
     for line in lines:
-        if "I asked:" in line:
-            question = line.split("I asked:")[1].strip()
-            questions.append(question)
+        if context:
+            if "Expanded query:" in line:
+                question = line.split("Expanded query:")[1].strip()
+                questions.append(question)
+        else:
+            if "I asked:" in line:
+                question = line.split("I asked:")[1].strip()
+                questions.append(question)
+        
     return questions
 
 
@@ -30,6 +39,7 @@ def ragr_question_generation(
     claim: str,
     model: str,
     prompt: str,
+    context: str,
     temperature: float,
     num_rounds: int,
     num_retries: int = 5,
@@ -41,14 +51,18 @@ def ragr_question_generation(
         model: Name of the OpenAI GPT-3/4 model to use.
         prompt: The prompt template to query GPT-3/4 with.
         temperature: Temperature to use for sampling questions. 0 represents greedy decoding.
+        query: original user prompt. (Optional)
         num_rounds: Number of times to sample questions.
-        context: Additional context to provide in the prompt.
         num_retries: Number of times to retry OpenAI call in the event of an API failure.
     Returns:
         questions: A list of questions.
     """
     client = OpenAI()
-    gpt_input = prompt.format(claim=claim).strip()
+    if context:
+        gpt_input = prompt.format(query=context).strip()
+    else:
+        gpt_input = prompt.format(claim=claim).strip()
+        context = None
 
     questions = set()
     for _ in range(num_rounds):
@@ -65,7 +79,8 @@ def ragr_question_generation(
                 logging.info("Generated query: %s", response.choices[0].message.content.strip())
                 logging.info("Usage: %s", response.usage.total_tokens)
                 cur_round_questions = parse_api_response(
-                    response.choices[0].message.content.strip()
+                    response.choices[0].message.content.strip(),
+                    context
                 )
                 questions.update(cur_round_questions)
                 break

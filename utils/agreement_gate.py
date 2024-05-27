@@ -35,6 +35,7 @@ def parse_api_response(api_response: str) -> Tuple[bool, str, str]:
 def run_agreement_gate(
     claim: str,
     query: str,
+    context: str,
     evidence: str,
     model: str,
     prompt: str,
@@ -57,7 +58,13 @@ def run_agreement_gate(
         gate: A dictionary with the status of the gate and reasoning for decision.
     """
     client = OpenAI()
-    gpt_input = prompt.format(claim=claim, query=query, evidence=evidence).strip()
+    
+    gpt_input = prompt.format(
+        claim=claim, 
+        query=context
+            if context
+            else query,
+        evidence=evidence).strip()
 
 
     for _ in range(num_retries):
